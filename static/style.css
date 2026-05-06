@@ -4,84 +4,69 @@ body {
     text-align: center;
 }
 
-h2 {
-    margin-top: 30px;
+form { margin: 20px; }
+input { padding: 10px; width: 250px; border: 1px solid #ccc; border-radius: 8px; }
+button { padding: 10px 15px; border: none; background: #4CAF50; color: white; border-radius: 8px; cursor: pointer; }
+
+/* 2단 분할 구조 */
+.main-container {
+    display: flex;
+    width: 95%;
+    max-width: 1200px;
+    margin: 20px auto;
+    gap: 20px;
+    height: 70vh;
 }
 
-form {
-    margin: 20px;
-}
-
-input {
+.news-list {
+    flex: 1;
+    overflow-y: auto;
+    background: white;
     padding: 10px;
-    width: 250px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
-button {
-    padding: 10px 15px;
-    border: none;
-    background: #4CAF50;
-    color: white;
-    border-radius: 8px;
+.summary-panel {
+    flex: 1;
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    text-align: left;
+    overflow-y: auto;
+}
+
+/* 테이블 스타일 커스텀 */
+.news-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.news-table td {
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+    text-align: left;
+}
+
+.news-link {
+    color: #333;
+    text-decoration: none;
+    font-weight: bold;
     cursor: pointer;
 }
 
-button:hover {
-    background: #45a049;
+.news-link:hover { color: #4CAF50; }
+
+/* 페이징 버튼 */
+.pagination { margin: 20px 0; display: flex; justify-content: center; align-items: center; gap: 10px; }
+.btn { 
+    padding: 8px 12px; background: #4CAF50; color: white !important; 
+    border-radius: 5px; text-decoration: none; font-size: 13px; 
 }
 
-table {
-    margin: 20px auto;
-    border-collapse: collapse;
-    width: 80%;
-    background: white;
-    border-radius: 10px;
-    overflow: hidden;
-}
-
-th, td {
-    padding: 12px;
-    border-bottom: 1px solid #ddd;
-}
-
-th {
-    background: #4CAF50;
-    color: white;
-}
-
-tr:hover {
-    background: #f1f1f1;
-}
-
-a {
-    color: #4CAF50;
-    text-decoration: none;
-    font-weight: bold;
-}
-.pagination {
-    margin: 20px 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 15px;
-}
-
-.btn {
-    padding: 8px 16px;
-    background-color: #4CAF50;
-    color: white !important; /* 링크 기본색 무시 */
-    border-radius: 5px;
-    text-decoration: none;
-    font-size: 14px;
-}
-
-.btn:hover {
-    background-color: #45a049;
-}
-
-.page-num {
-    font-weight: bold;
-    color: #333;
+#summary-content {
+    line-height: 1.8;
+    color: #444;
+    white-space: pre-wrap;
 }
