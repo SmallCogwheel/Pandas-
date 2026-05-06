@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 
+# Render 환경에서 가장 안전한 임시 DB 경로
 DB_NAME = "/tmp/news_archive.db"
 PAGE_SIZE = 12
 
@@ -66,9 +67,9 @@ def get_summary():
         soup = BeautifulSoup(res.text, "html.parser")
         paragraphs = soup.find_all('p')
         content = " ".join([p.get_text().strip() for p in paragraphs if len(p.get_text()) > 25])
-        return jsonify({"summary": content[:400] + "..." if content else "본문 추출 불가"})
+        return jsonify({"summary": content[:400] + "..." if content else "본문을 추출할 수 없습니다."})
     except:
-        return jsonify({"summary": "뉴스 로딩 실패"})
+        return jsonify({"summary": "내용을 불러오는 데 실패했습니다."})
 
 @app.route("/", methods=["GET", "POST"])
 def home():
@@ -89,12 +90,11 @@ def home():
         total_pages = math.ceil(total_news / PAGE_SIZE) if total_news > 0 else 1
 
         if not df.empty:
-            df["뉴스 제목 (클릭 시 요약)"] = df.apply(
+            df["제목"] = df.apply(
                 lambda row: f'<a href="{row["link"]}" class="news-link">{row["title"]}</a>', axis=1
             )
-            result_table_html = df[["뉴스 제목 (클릭 시 요약)"]].to_html(index=False, escape=False, classes="news-table")
+            result_table_html = df[["제목"]].to_html(index=False, escape=False, classes="news-table")
 
-    # render_template을 사용하여 외부 HTML 파일을 불러옵니다.
     return render_template("index.html", 
                            keyword=keyword, 
                            result_table_html=result_table_html, 
