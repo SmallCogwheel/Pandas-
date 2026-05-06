@@ -29,7 +29,7 @@ def get_db_conn():
 # --- 뉴스 수집 및 DB 저장 ---
 def crawl_to_db(keyword):
     url = f"https://news.google.com/rss/search?q={keyword}&hl=ko&gl=KR&ceid=KR:ko"
-    headers = {"User-Agent": "Mozilla/5.0"}
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
     try:
         res = requests.get(url, headers=headers, timeout=10)
         soup = BeautifulSoup(res.content, "xml")
@@ -61,9 +61,30 @@ def get_news_from_db(keyword, page):
     finally:
         conn.close()
 
+# --- 뉴스 요약 API (직접 추출 방식) ---
 @app.route("/get_summary")
 def get_summary():
-    return jsonify({"summary": "Render 무료 플랜 성능 제한으로 인해 상세 요약 기능은 준비 중입니다."})
+    url = request.args.get("url")
+    if not url:
+        return jsonify({"summary": "유효하지 않은 URL입니다."})
+    
+    try:
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+        res = requests.get(url, headers=headers, timeout=5)
+        res.encoding = 'utf-8'
+        soup = BeautifulSoup(res.text, "html.parser")
+        
+        # 기사 본문의 p 태그 중 의미 있는 길이만 수집
+        paragraphs = soup.find_all('p')
+        content = " ".join([p.get_text().strip() for p in paragraphs if len(p.get_text()) > 20])
+        
+        if not content:
+            return jsonify({"summary": "기사 본문을 자동으로 가져올 수 없는 사이트입니다. 원문 보기 버튼을 클릭해 주세요."})
+
+        summary = content[:350] + "..." # 앞부분 약 350자 추출
+        return jsonify({"summary": summary})
+    except:
+        return jsonify({"summary": "뉴스 내용을 불러오는 데 실패했습니다. 보안이 걸린 사이트일 수 있습니다."})
 
 @app.route("/", methods=["GET", "POST"])
 def home():
@@ -84,6 +105,7 @@ def home():
         total_pages = math.ceil(total_news / PAGE_SIZE) if total_news > 0 else 1
 
         if not df.empty:
+            # 클릭 이벤트를 위해 class와 href 설정
             df["제목"] = df.apply(
                 lambda row: f'<a href="{row["link"]}" class="news-link">{row["title"]}</a>', axis=1
             )
@@ -97,9 +119,8 @@ def home():
                 pagination_html += f'<a href="/?keyword={keyword}&page={page+1}" class="btn">다음</a>'
             pagination_html += '</div>'
         else:
-            result_table_html = "<p>수집된 데이터가 없습니다.</p>"
+            result_table_html = "<p>데이터가 없습니다. 검색 버튼을 다시 눌러주세요.</p>"
 
-    # HTML 템플릿 반환 (f-string 내의 중괄호 처리에 유의하세요)
     return render_template_string(f"""
     <!DOCTYPE html>
     <html>
@@ -109,6 +130,8 @@ def home():
         <link rel="stylesheet" href="/static/style.css">
         <style>
             .news-link {{ color: #4CAF50; text-decoration: underline; cursor: pointer; font-weight: bold; }}
+            .summary-panel {{ min-height: 400px; }}
+            #summary-content {{ line-height: 1.6; white-space: pre-wrap; }}
         </style>
     </head>
     <body>
@@ -125,7 +148,7 @@ def home():
             </div>
             <div id="summary-panel" class="summary-panel">
                 <h3>📄 뉴스 미리보기</h3>
-                <div id="summary-content">왼쪽 리스트에서 뉴스 제목을 클릭하세요.</div>
+                <div id="summary-content">왼쪽 기사 제목을 클릭하면 요약본이 나타납니다.</div>
                 <div id="original-link-box" style="margin-top:20px;"></div>
             </div>
         </div>
@@ -139,7 +162,7 @@ def home():
                     const contentBox = document.getElementById('summary-content');
                     const linkBox = document.getElementById('original-link-box');
                     
-                    contentBox.innerText = "서버에서 내용을 분석 중입니다...";
+                    contentBox.innerText = "기사 본문을 분석 중입니다... 잠시만 기다려주세요.";
                     linkBox.innerHTML = "";
 
                     fetch(`/get_summary?url=${{encodeURIComponent(url)}}`)
@@ -148,8 +171,8 @@ def home():
                             contentBox.innerText = data.summary;
                             linkBox.innerHTML = `<a href="${{url}}" target="_blank" class="btn" style="background:#2196F3;">기사 원문 전체보기</a>`;
                         }})
-                        .catch(err => {{
-                            contentBox.innerText = "오류가 발생했습니다.";
+                        .catch(() => {{
+                            contentBox.innerText = "요약을 불러오지 못했습니다.";
                         }});
                 }}
             }});
