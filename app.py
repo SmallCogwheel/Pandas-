@@ -7,24 +7,17 @@ app = Flask(__name__)
 
 
 def crawl(keyword):
-    url = f"https://m.search.naver.com/search.naver?where=news&query={keyword}"
+    url = f"https://news.google.com/rss/search?q={keyword}&hl=ko&gl=KR&ceid=KR:ko"
 
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-    }
+    res = requests.get(url)
+    soup = BeautifulSoup(res.content, "xml")
 
-    res = requests.get(url, headers=headers)
-    soup = BeautifulSoup(res.text, "html.parser")
-    
     data = []
-    
-    items = soup.select("a.news_tit")
-    print("뉴스 개수:", len(items))  # 👈 여기!
-    
-    for item in items[:10]:
-        title = item.get_text(strip=True)
-        link = item.get("href")
-    
+
+    for item in soup.select("item")[:10]:
+        title = item.title.text
+        link = item.link.text
+
         data.append({
             "title": title,
             "link": link
