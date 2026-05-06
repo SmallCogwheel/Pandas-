@@ -6,14 +6,20 @@ import pandas as pd
 app = Flask(__name__)
 
 def crawl(keyword):
-    url = "https://news.ycombinator.com/"
+    url = f"https://search.naver.com/search.naver?where=news&query={keyword}"
     res = requests.get(url)
     soup = BeautifulSoup(res.text, "html.parser")
 
     data = []
 
-    for item in soup.select(".titleline > a"):
-        title = item.text
+    for item in soup.select(".news_tit"):
+    title = item.text
+    link = item["href"]
+
+    data.append({
+        "title": title,
+        "link": link
+    })
 
         if keyword.lower() in title.lower():
             data.append({
