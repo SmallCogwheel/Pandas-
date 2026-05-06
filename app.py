@@ -10,7 +10,7 @@ def crawl(keyword):
     url = f"https://news.google.com/rss/search?q={keyword}&hl=ko&gl=KR&ceid=KR:ko"
 
     res = requests.get(url)
-    soup = BeautifulSoup(res.content, "xml")
+    soup = BeautifulSoup(res.content, "html.parser")
 
     data = []
 
