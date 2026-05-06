@@ -97,13 +97,22 @@ def home():
         else:
             result_table_html = "<p>수집된 데이터가 없습니다. 잠시 후 다시 시도하거나 키워드를 확인해 주세요.</p>"
 
-    return render_template_string(f"""
+   return render_template_string(f"""
     <!DOCTYPE html>
     <html>
     <head>
         <meta charset="UTF-8">
         <title>뉴스 아카이브</title>
         <link rel="stylesheet" href="/static/style.css">
+        <style>
+            /* 클릭할 수 있다는 표시를 위해 커서 모양 변경 */
+            .news-link {{ 
+                color: #4CAF50; 
+                text-decoration: underline; 
+                cursor: pointer; 
+                font-weight: bold;
+            }}
+        </style>
     </head>
     <body>
         <h2>📰 뉴스 무한 검색 & 요약</h2>
@@ -119,10 +128,38 @@ def home():
             </div>
             <div id="summary-panel" class="summary-panel">
                 <h3>📄 뉴스 미리보기</h3>
-                <div id="summary-content">뉴스를 선택하면 요약 내용이 표시됩니다.</div>
-                <div id="original-link-box"></div>
+                <div id="summary-content">왼쪽 리스트에서 뉴스 제목을 클릭하세요.</div>
+                <div id="original-link-box" style="margin-top:20px;"></div>
             </div>
         </div>
+
+        <script>
+            // 모든 뉴스 링크 요소를 찾아서 클릭 이벤트를 붙임
+            document.addEventListener('click', function (e) {{
+                if (e.target && e.target.classList.contains('news-link')) {{
+                    e.preventDefault(); // 페이지 이동을 강제로 막음
+                    
+                    const url = e.target.getAttribute('href');
+                    const contentBox = document.getElementById('summary-content');
+                    const linkBox = document.getElementById('original-link-box');
+                    
+                    contentBox.innerText = "서버에서 내용을 분석 중입니다...";
+                    linkBox.innerHTML = "";
+
+                    // 서버의 /get_summary 경로로 데이터 요청
+                    fetch(`/get_summary?url=${{encodeURIComponent(url)}}`)
+                        .then(res => res.json())
+                        .then(data => {{
+                            contentBox.innerText = data.summary;
+                            // 요약이 끝나면 그제서야 진짜 원문으로 가는 버튼을 만들어줌
+                            linkBox.innerHTML = `<a href="${{url}}" target="_blank" class="btn" style="background:#2196F3;">기사 원문 전체보기</a>`;
+                        }})
+                        .catch(err => {{
+                            contentBox.innerText = "오류가 발생했습니다. 다시 시도해주세요.";
+                        }});
+                }}
+            }});
+        </script>
     </body>
     </html>
     """)
