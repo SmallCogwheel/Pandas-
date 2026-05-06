@@ -15,13 +15,16 @@ def crawl(keyword):
 
     res = requests.get(url, headers=headers)
     soup = BeautifulSoup(res.text, "html.parser")
-
+    
     data = []
-
-    for item in soup.select("a.news_tit")[:10]:
+    
+    items = soup.select("a.news_tit")
+    print("뉴스 개수:", len(items))  # 👈 여기!
+    
+    for item in items[:10]:
         title = item.get_text(strip=True)
         link = item.get("href")
-
+    
         data.append({
             "title": title,
             "link": link
