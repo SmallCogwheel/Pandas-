@@ -20,7 +20,13 @@ def crawl(keyword):
 
     for item in soup.select("item")[:10]:
         title = item.title.text if item.title else "제목 없음"
-        link = item.link.text if item.link else "#"
+        link = item.link.text if item.link else ""
+
+        # 🔥 링크 보정 (핵심)
+        if link.startswith("/"):
+            link = "https://news.google.com" + link
+        elif not link.startswith("http"):
+            link = "#"
 
         data.append({
             "title": title,
@@ -30,16 +36,13 @@ def crawl(keyword):
     df = pd.DataFrame(data)
 
     if not df.empty:
-        # 제목 클릭하면 기사 이동
+        # 제목 클릭 → 새 탭 이동
         df["title"] = df.apply(
             lambda row: f'<a href="{row["link"]}" target="_blank" rel="noopener noreferrer">{row["title"]}</a>',
             axis=1
         )
 
-        # link 컬럼 제거
         df = df.drop(columns=["link"])
-
-        # 컬럼 이름 한국어로 변경
         df.columns = ["제목"]
 
     return df
