@@ -6,6 +6,14 @@ import pandas as pd
 app = Flask(__name__)
 
 
+def get_real_link(url):
+    try:
+        res = requests.get(url, allow_redirects=True, timeout=5)
+        return res.url
+    except:
+        return url
+
+
 def crawl(keyword):
     url = f"https://news.google.com/rss/search?q={keyword}&hl=ko&gl=KR&ceid=KR:ko"
 
@@ -15,8 +23,10 @@ def crawl(keyword):
     data = []
 
     for item in soup.select("item")[:10]:
-        title = item.title.text
-        link = item.link.text
+        title = item.title.text if item.title else "제목 없음"
+        raw_link = item.link.text if item.link else "#"
+
+        link = get_real_link(raw_link)  # 👈 여기로 이동!
 
         data.append({
             "title": title,
