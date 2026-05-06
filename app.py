@@ -15,7 +15,6 @@ PAGE_SIZE = 10
 # --- DB 연결 및 테이블 생성 보장 ---
 def get_db_conn():
     conn = sqlite3.connect(DB_NAME)
-    # 테이블이 없으면 생성 (IF NOT EXISTS)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS news (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -36,7 +35,7 @@ def crawl_to_db(keyword):
         soup = BeautifulSoup(res.content, "xml")
         items = soup.find_all("item")
         
-        conn = get_db_conn() # 연결할 때 테이블 생성 확인
+        conn = get_db_conn()
         for item in items:
             title = item.title.get_text()
             link = item.link.get_text()
@@ -50,12 +49,15 @@ def crawl_to_db(keyword):
 # --- DB 데이터 로드 ---
 def get_news_from_db(keyword, page):
     offset = (page - 1) * PAGE_SIZE
-    conn = get_db_conn() # 연결할 때 테이블 생성 확인
+    conn = get_db_conn()
     try:
         query = "SELECT title, link FROM news WHERE keyword = ? ORDER BY id DESC LIMIT ? OFFSET ?"
         df = pd.read_sql_query(query, conn, params=(keyword, PAGE_SIZE, offset))
         total_count = conn.execute("SELECT COUNT(*) FROM news WHERE keyword = ?", (keyword,)).fetchone()[0]
         return df, total_count
+    except Exception as e:
+        print(f"DB Load Error: {e}")
+        return pd.DataFrame(), 0
     finally:
         conn.close()
 
@@ -83,7 +85,7 @@ def home():
 
         if not df.empty:
             df["제목"] = df.apply(
-                lambda row: f'<a href="{row["link"]}" class="news-link" target="_blank">{row["title"]}</a>', axis=1
+                lambda row: f'<a href="{row["link"]}" class="news-link">{row["title"]}</a>', axis=1
             )
             result_table_html = df[["제목"]].to_html(index=False, escape=False, classes="news-table")
 
@@ -95,9 +97,10 @@ def home():
                 pagination_html += f'<a href="/?keyword={keyword}&page={page+1}" class="btn">다음</a>'
             pagination_html += '</div>'
         else:
-            result_table_html = "<p>수집된 데이터가 없습니다. 잠시 후 다시 시도하거나 키워드를 확인해 주세요.</p>"
+            result_table_html = "<p>수집된 데이터가 없습니다.</p>"
 
-   return render_template_string(f"""
+    # HTML 템플릿 반환 (f-string 내의 중괄호 처리에 유의하세요)
+    return render_template_string(f"""
     <!DOCTYPE html>
     <html>
     <head>
@@ -105,13 +108,7 @@ def home():
         <title>뉴스 아카이브</title>
         <link rel="stylesheet" href="/static/style.css">
         <style>
-            /* 클릭할 수 있다는 표시를 위해 커서 모양 변경 */
-            .news-link {{ 
-                color: #4CAF50; 
-                text-decoration: underline; 
-                cursor: pointer; 
-                font-weight: bold;
-            }}
+            .news-link {{ color: #4CAF50; text-decoration: underline; cursor: pointer; font-weight: bold; }}
         </style>
     </head>
     <body>
@@ -134,10 +131,9 @@ def home():
         </div>
 
         <script>
-            // 모든 뉴스 링크 요소를 찾아서 클릭 이벤트를 붙임
             document.addEventListener('click', function (e) {{
                 if (e.target && e.target.classList.contains('news-link')) {{
-                    e.preventDefault(); // 페이지 이동을 강제로 막음
+                    e.preventDefault();
                     
                     const url = e.target.getAttribute('href');
                     const contentBox = document.getElementById('summary-content');
@@ -146,16 +142,14 @@ def home():
                     contentBox.innerText = "서버에서 내용을 분석 중입니다...";
                     linkBox.innerHTML = "";
 
-                    // 서버의 /get_summary 경로로 데이터 요청
                     fetch(`/get_summary?url=${{encodeURIComponent(url)}}`)
                         .then(res => res.json())
                         .then(data => {{
                             contentBox.innerText = data.summary;
-                            // 요약이 끝나면 그제서야 진짜 원문으로 가는 버튼을 만들어줌
                             linkBox.innerHTML = `<a href="${{url}}" target="_blank" class="btn" style="background:#2196F3;">기사 원문 전체보기</a>`;
                         }})
                         .catch(err => {{
-                            contentBox.innerText = "오류가 발생했습니다. 다시 시도해주세요.";
+                            contentBox.innerText = "오류가 발생했습니다.";
                         }});
                 }}
             }});
@@ -165,6 +159,5 @@ def home():
     """)
 
 if __name__ == "__main__":
-    # 로컬 테스트용
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
