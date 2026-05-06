@@ -5,29 +5,38 @@ import pandas as pd
 
 app = Flask(__name__)
 
+
 def crawl(keyword):
     url = f"https://search.naver.com/search.naver?where=news&query={keyword}"
-    res = requests.get(url)
+
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
+
+    res = requests.get(url, headers=headers)
     soup = BeautifulSoup(res.text, "html.parser")
 
     data = []
 
-    for item in soup.select(".news_tit"):
-    title = item.text
-    link = item["href"]
+    for item in soup.select(".news_tit")[:10]:  # 최대 10개만
+        title = item.text
+        link = item["href"]
 
-    data.append({
-        "title": title,
-        "link": link
-    })
+        data.append({
+            "title": title,
+            "link": link
+        })
 
-        if keyword.lower() in title.lower():
-            data.append({
-                "title": title,
-                "link": item["href"]
-            })
+    df = pd.DataFrame(data)
 
-    return pd.DataFrame(data)
+    # 링크 클릭 가능하게 만들기
+    if not df.empty:
+        df["link"] = df["link"].apply(
+            lambda x: f'<a href="{x}" target="_blank">기사보기</a>'
+        )
+
+    return df
+
 
 @app.route("/", methods=["GET", "POST"])
 def home():
@@ -35,18 +44,22 @@ def home():
     keyword = ""
 
     if request.method == "POST":
-        keyword = request.form.get("keyword")
+        keyword = request.form.get("keyword", "").strip()
         df = crawl(keyword)
 
-        if len(df) == 0:
+        if df.empty:
             result_html = "<p>결과 없음</p>"
         else:
             result_html = df.to_html(index=False, escape=False)
 
     return f"""
     <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>뉴스 검색</title>
+    </head>
     <body>
-        <h2>키워드 크롤링</h2>
+        <h2>뉴스 검색</h2>
 
         <form method="POST">
             <input name="keyword" placeholder="키워드 입력" value="{keyword}">
@@ -60,5 +73,6 @@ def home():
     </html>
     """
 
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000)
