@@ -9,18 +9,18 @@ app = Flask(__name__)
 def crawl(keyword):
     url = f"https://news.google.com/rss/search?q={keyword}&hl=ko&gl=KR&ceid=KR:ko"
 
-    res = requests.get(url)
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
+
+    res = requests.get(url, headers=headers)
     soup = BeautifulSoup(res.content, "html.parser")
 
     data = []
 
     for item in soup.select("item")[:10]:
         title = item.title.text if item.title else "제목 없음"
-
-        # 🔥 핵심: guid 사용 (실제 기사 링크)
-        link = item.guid.text if item.guid else (
-            item.link.text if item.link else "#"
-        )
+        link = item.link.text if item.link else "#"
 
         data.append({
             "title": title,
@@ -32,7 +32,7 @@ def crawl(keyword):
     if not df.empty:
         # 제목 클릭하면 기사 이동
         df["title"] = df.apply(
-            lambda row: f'<a href="{row["link"]}" target="_blank">{row["title"]}</a>',
+            lambda row: f'<a href="{row["link"]}" target="_blank" rel="noopener noreferrer">{row["title"]}</a>',
             axis=1
         )
 
