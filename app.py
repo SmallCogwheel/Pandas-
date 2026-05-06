@@ -16,7 +16,11 @@ def crawl(keyword):
 
     for item in soup.select("item")[:10]:
         title = item.title.text if item.title else "제목 없음"
-        link = item.link.text if item.link else "#"
+
+        # 🔥 핵심: guid 사용 (실제 기사 링크)
+        link = item.guid.text if item.guid else (
+            item.link.text if item.link else "#"
+        )
 
         data.append({
             "title": title,
