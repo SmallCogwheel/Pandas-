@@ -62,9 +62,10 @@ def home():
     <head>
         <meta charset="UTF-8">
         <title>뉴스 검색</title>
+        <link rel="stylesheet" href="/static/style.css">
     </head>
     <body>
-        <h2>뉴스 검색</h2>
+        <h2>📰 뉴스 검색</h2>
 
         <form method="POST">
             <input name="keyword" placeholder="키워드 입력" value="{keyword}">
