@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>뉴스 아카이브</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="header-container">
+        <h2>📰 뉴스 무한 검색 & 요약</h2>
+        <form method="POST" action="/" class="search-form">
+            <input name="keyword" placeholder="키워드 입력" value="{{ keyword }}">
+            <button type="submit">검색 및 수집</button>
+        </form>
+    </div>
+
+    <div class="main-container">
+        <div class="news-list-box">
+            <div class="scroll-area">
+                {% if result_table_html %}
+                    {{ result_table_html | safe }}
+                {% else %}
+                    <p class="no-data">키워드를 검색해 주세요.</p>
+                {% endif %}
+            </div>
+            
+            <div class="pagination">
+                {% if page > 1 %}
+                    <a href="/?keyword={{ keyword }}&page={{ page-1 }}" class="btn-nav">이전</a>
+                {% endif %}
+                <span class="page-num">{{ page }} / {{ total_pages }}</span>
+                {% if page < total_pages %}
+                    <a href="/?keyword={{ keyword }}&page={{ page+1 }}" class="btn-nav">다음</a>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div id="summary-panel" class="summary-panel">
+            <div class="summary-header">
+                <h3>📄 실시간 뉴스 미리보기</h3>
+            </div>
+            <div id="summary-content">왼쪽에서 기사를 선택해 주세요.</div>
+            <div id="original-link-box"></div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
