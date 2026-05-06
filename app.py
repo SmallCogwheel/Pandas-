@@ -7,10 +7,10 @@ app = Flask(__name__)
 
 
 def crawl(keyword):
-    url = f"https://search.naver.com/search.naver?where=news&query={keyword}"
+    url = f"https://m.search.naver.com/search.naver?where=news&query={keyword}"
 
     headers = {
-        "User-Agent": "Mozilla/5.0"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
     }
 
     res = requests.get(url, headers=headers)
@@ -18,9 +18,9 @@ def crawl(keyword):
 
     data = []
 
-    for item in soup.select(".news_tit")[:10]:  # 최대 10개만
-        title = item.text
-        link = item["href"]
+    for item in soup.select("a.news_tit")[:10]:
+        title = item.get_text(strip=True)
+        link = item.get("href")
 
         data.append({
             "title": title,
@@ -29,7 +29,6 @@ def crawl(keyword):
 
     df = pd.DataFrame(data)
 
-    # 링크 클릭 가능하게 만들기
     if not df.empty:
         df["link"] = df["link"].apply(
             lambda x: f'<a href="{x}" target="_blank">기사보기</a>'
