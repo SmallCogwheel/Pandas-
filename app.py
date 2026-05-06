@@ -6,14 +6,6 @@ import pandas as pd
 app = Flask(__name__)
 
 
-def get_real_link(url):
-    try:
-        res = requests.get(url, allow_redirects=True, timeout=5)
-        return res.url
-    except:
-        return url
-
-
 def crawl(keyword):
     url = f"https://news.google.com/rss/search?q={keyword}&hl=ko&gl=KR&ceid=KR:ko"
 
@@ -24,9 +16,7 @@ def crawl(keyword):
 
     for item in soup.select("item")[:10]:
         title = item.title.text if item.title else "제목 없음"
-        raw_link = item.link.text if item.link else "#"
-
-        link = get_real_link(raw_link)  # 👈 여기로 이동!
+        link = item.link.text if item.link else "#"
 
         data.append({
             "title": title,
@@ -36,9 +26,17 @@ def crawl(keyword):
     df = pd.DataFrame(data)
 
     if not df.empty:
-        df["link"] = df["link"].apply(
-            lambda x: f'<a href="{x}" target="_blank">기사보기</a>'
+        # 제목 클릭하면 기사 이동
+        df["title"] = df.apply(
+            lambda row: f'<a href="{row["link"]}" target="_blank">{row["title"]}</a>',
+            axis=1
         )
+
+        # link 컬럼 제거
+        df = df.drop(columns=["link"])
+
+        # 컬럼 이름 한국어로 변경
+        df.columns = ["제목"]
 
     return df
 
@@ -55,7 +53,7 @@ def home():
         if df.empty:
             result_html = "<p>결과 없음</p>"
         else:
-            result_html = df.to_html(index=False, escape=False)
+            result_html = "<h3>검색 결과</h3>" + df.to_html(index=False, escape=False)
 
     return f"""
     <html>
