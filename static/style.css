@@ -60,3 +60,28 @@ a {
     text-decoration: none;
     font-weight: bold;
 }
+.pagination {
+    margin: 20px 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+}
+
+.btn {
+    padding: 8px 16px;
+    background-color: #4CAF50;
+    color: white !important; /* 링크 기본색 무시 */
+    border-radius: 5px;
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.btn:hover {
+    background-color: #45a049;
+}
+
+.page-num {
+    font-weight: bold;
+    color: #333;
+}
