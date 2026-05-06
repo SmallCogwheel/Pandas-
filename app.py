@@ -8,25 +8,24 @@ from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 
-# Render의 휘발성 디스크 경로 설정
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_NAME = os.path.join(BASE_DIR, "news_archive.db")
+# Render에서 가장 안전한 임시 경로 사용
+DB_NAME = "/tmp/news_archive.db"
+PAGE_SIZE = 10
 
-# --- DB 초기화 ---
-def init_db():
-    try:
-        with sqlite3.connect(DB_NAME) as conn:
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS news (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    keyword TEXT,
-                    title TEXT,
-                    link TEXT UNIQUE,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-    except Exception as e:
-        print(f"DB Init Error: {e}")
+# --- DB 연결 및 테이블 생성 보장 ---
+def get_db_conn():
+    conn = sqlite3.connect(DB_NAME)
+    # 테이블이 없으면 생성 (IF NOT EXISTS)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS news (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            keyword TEXT,
+            title TEXT,
+            link TEXT UNIQUE,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    return conn
 
 # --- 뉴스 수집 및 DB 저장 ---
 def crawl_to_db(keyword):
@@ -37,31 +36,32 @@ def crawl_to_db(keyword):
         soup = BeautifulSoup(res.content, "xml")
         items = soup.find_all("item")
         
-        with sqlite3.connect(DB_NAME) as conn:
-            for item in items:
-                title = item.title.get_text()
-                link = item.link.get_text()
-                conn.execute("INSERT OR IGNORE INTO news (keyword, title, link) VALUES (?, ?, ?)", 
-                             (keyword, title, link))
-            conn.commit()
+        conn = get_db_conn() # 연결할 때 테이블 생성 확인
+        for item in items:
+            title = item.title.get_text()
+            link = item.link.get_text()
+            conn.execute("INSERT OR IGNORE INTO news (keyword, title, link) VALUES (?, ?, ?)", 
+                         (keyword, title, link))
+        conn.commit()
+        conn.close()
     except Exception as e:
         print(f"Crawl Error: {e}")
 
 # --- DB 데이터 로드 ---
 def get_news_from_db(keyword, page):
     offset = (page - 1) * PAGE_SIZE
-    with sqlite3.connect(DB_NAME) as conn:
+    conn = get_db_conn() # 연결할 때 테이블 생성 확인
+    try:
         query = "SELECT title, link FROM news WHERE keyword = ? ORDER BY id DESC LIMIT ? OFFSET ?"
         df = pd.read_sql_query(query, conn, params=(keyword, PAGE_SIZE, offset))
         total_count = conn.execute("SELECT COUNT(*) FROM news WHERE keyword = ?", (keyword,)).fetchone()[0]
-    return df, total_count
-
-PAGE_SIZE = 10
+        return df, total_count
+    finally:
+        conn.close()
 
 @app.route("/get_summary")
 def get_summary():
-    # Render 무료 플랜의 메모리 부족을 방지하기 위해 텍스트만 반환하도록 단순화
-    return jsonify({"summary": "현재 상세 요약 기능은 서버 안정화를 위해 점검 중입니다. 원문 링크를 통해 전체 내용을 확인해 주세요!"})
+    return jsonify({"summary": "Render 무료 플랜 성능 제한으로 인해 상세 요약 기능은 준비 중입니다."})
 
 @app.route("/", methods=["GET", "POST"])
 def home():
@@ -79,11 +79,11 @@ def home():
     
     if keyword:
         df, total_news = get_news_from_db(keyword, page)
-        total_pages = math.ceil(total_news / PAGE_SIZE)
+        total_pages = math.ceil(total_news / PAGE_SIZE) if total_news > 0 else 1
 
         if not df.empty:
             df["제목"] = df.apply(
-                lambda row: f'<a href="{row["link"]}" class="news-link">{row["title"]}</a>', axis=1
+                lambda row: f'<a href="{row["link"]}" class="news-link" target="_blank">{row["title"]}</a>', axis=1
             )
             result_table_html = df[["제목"]].to_html(index=False, escape=False, classes="news-table")
 
@@ -94,6 +94,8 @@ def home():
             if page < total_pages:
                 pagination_html += f'<a href="/?keyword={keyword}&page={page+1}" class="btn">다음</a>'
             pagination_html += '</div>'
+        else:
+            result_table_html = "<p>수집된 데이터가 없습니다. 잠시 후 다시 시도하거나 키워드를 확인해 주세요.</p>"
 
     return render_template_string(f"""
     <!DOCTYPE html>
@@ -121,33 +123,11 @@ def home():
                 <div id="original-link-box"></div>
             </div>
         </div>
-
-        <script>
-            document.querySelectorAll('.news-link').forEach(link => {{
-                link.addEventListener('click', function(e) {{
-                    e.preventDefault();
-                    const url = this.href;
-                    const contentBox = document.getElementById('summary-content');
-                    const linkBox = document.getElementById('original-link-box');
-                    
-                    contentBox.innerText = "내용을 불러오는 중...";
-                    linkBox.innerHTML = "";
-
-                    fetch(`/get_summary?url=${{encodeURIComponent(url)}}`)
-                        .then(res => res.json())
-                        .then(data => {{
-                            contentBox.innerText = data.summary;
-                            linkBox.innerHTML = `<br><a href="${{url}}" target="_blank" class="btn">기사 원문 보기</a>`;
-                        }});
-                }});
-            }});
-        </script>
     </body>
     </html>
     """)
 
 if __name__ == "__main__":
-    init_db()
-    # Render는 PORT 환경변수를 통해 포트를 할당합니다.
+    # 로컬 테스트용
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
